@@ -32,6 +32,7 @@ from .embeddings import EmbeddingStore, embed_all_nodes
 from .flows import get_affected_flows as _get_affected_flows
 from .flows import get_flow_by_id, get_flows
 from .graph import GraphStore, edge_to_dict, node_to_dict
+from .hints import generate_hints, get_session
 from .incremental import (
     find_project_root,
     full_build,
@@ -647,7 +648,7 @@ def semantic_search_nodes(
         if not results:
             search_mode = "keyword"
 
-        return {
+        result = {
             "status": "ok",
             "query": query,
             "search_mode": search_mode,
@@ -656,6 +657,10 @@ def semantic_search_nodes(
             ),
             "results": results,
         }
+        result["_hints"] = generate_hints(
+            "semantic_search_nodes", result, get_session()
+        )
+        return result
     finally:
         store.close()
 
@@ -950,11 +955,13 @@ def list_flows(
                         filtered.append(f)
             flows = filtered[:limit]
 
-        return {
+        result = {
             "status": "ok",
             "summary": f"Found {len(flows)} execution flow(s)",
             "flows": flows,
         }
+        result["_hints"] = generate_hints("list_flows", result, get_session())
+        return result
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
     finally:
@@ -1025,7 +1032,7 @@ def get_flow(
                     except (OSError, UnicodeDecodeError):
                         step["source"] = "(could not read file)"
 
-        return {
+        result = {
             "status": "ok",
             "summary": (
                 f"Flow '{flow['name']}': {flow['node_count']} nodes, "
@@ -1033,6 +1040,8 @@ def get_flow(
             ),
             "flow": flow,
         }
+        result["_hints"] = generate_hints("get_flow", result, get_session())
+        return result
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
     finally:
@@ -1084,13 +1093,15 @@ def get_affected_flows_func(
         result = _get_affected_flows(store, abs_files)
 
         total = result["total"]
-        return {
+        out = {
             "status": "ok",
             "summary": f"{total} flow(s) affected by changes in {len(changed_files)} file(s)",
             "changed_files": changed_files,
             "affected_flows": result["affected_flows"],
             "total": total,
         }
+        out["_hints"] = generate_hints("get_affected_flows", out, get_session())
+        return out
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
     finally:
@@ -1125,11 +1136,13 @@ def list_communities_func(
     store, root = _get_store(repo_root)
     try:
         communities = get_communities(store, sort_by=sort_by, min_size=min_size)
-        return {
+        result = {
             "status": "ok",
             "summary": f"Found {len(communities)} communities",
             "communities": communities,
         }
+        result["_hints"] = generate_hints("list_communities", result, get_session())
+        return result
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
     finally:
@@ -1192,7 +1205,7 @@ def get_community_func(
                 members = [node_to_dict(store._row_to_node(row)) for row in rows]
                 community["member_details"] = members
 
-        return {
+        result = {
             "status": "ok",
             "summary": (
                 f"Community '{community['name']}': {community['size']} nodes, "
@@ -1200,6 +1213,8 @@ def get_community_func(
             ),
             "community": community,
         }
+        result["_hints"] = generate_hints("get_community", result, get_session())
+        return result
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
     finally:
@@ -1232,7 +1247,7 @@ def get_architecture_overview_func(
         n_communities = len(overview["communities"])
         n_cross = len(overview["cross_community_edges"])
         n_warnings = len(overview["warnings"])
-        return {
+        result = {
             "status": "ok",
             "summary": (
                 f"Architecture: {n_communities} communities, "
@@ -1240,6 +1255,10 @@ def get_architecture_overview_func(
             ),
             **overview,
         }
+        result["_hints"] = generate_hints(
+            "get_architecture_overview", result, get_session()
+        )
+        return result
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
     finally:
@@ -1334,11 +1353,13 @@ def detect_changes_func(
                         except (OSError, UnicodeDecodeError):
                             func["source"] = "(could not read file)"
 
-        return {
+        result = {
             "status": "ok",
             "changed_files": changed_files,
             **analysis,
         }
+        result["_hints"] = generate_hints("detect_changes", result, get_session())
+        return result
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
     finally:
@@ -1400,7 +1421,7 @@ def refactor_func(
                     "status": "not_found",
                     "summary": f"No node found matching '{old_name}'.",
                 }
-            return {
+            result = {
                 "status": "ok",
                 "summary": (
                     f"Rename preview: {old_name} -> {new_name}, "
@@ -1410,19 +1431,23 @@ def refactor_func(
                 ),
                 **preview,
             }
+            result["_hints"] = generate_hints("refactor", result, get_session())
+            return result
 
         elif mode == "dead_code":
             dead = find_dead_code(store, kind=kind, file_pattern=file_pattern)
-            return {
+            result = {
                 "status": "ok",
                 "summary": f"Found {len(dead)} dead code symbol(s).",
                 "dead_code": dead,
                 "total": len(dead),
             }
+            result["_hints"] = generate_hints("refactor", result, get_session())
+            return result
 
         else:  # suggest
             suggestions = suggest_refactorings(store)
-            return {
+            result = {
                 "status": "ok",
                 "summary": (
                     f"Generated {len(suggestions)} refactoring suggestion(s)."
@@ -1430,6 +1455,8 @@ def refactor_func(
                 "suggestions": suggestions,
                 "total": len(suggestions),
             }
+            result["_hints"] = generate_hints("refactor", result, get_session())
+            return result
 
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
