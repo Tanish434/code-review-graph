@@ -105,7 +105,7 @@ def export_graph_data(store: GraphStore) -> dict:
         ).fetchall()
         community_map = {r["qualified_name"]: r["community_id"] for r in rows}
     except Exception:
-        pass
+        community_map = {}
 
     for file_path in store.get_all_files():
         for gnode in store.get_nodes_by_file(file_path):

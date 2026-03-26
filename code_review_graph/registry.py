@@ -90,12 +90,12 @@ class Registry:
                         self._save()
                     return entry
 
-            entry: dict[str, str] = {"path": str_path}
+            new_entry: dict[str, str] = {"path": str_path}
             if alias:
-                entry["alias"] = alias
-            self._repos.append(entry)
+                new_entry["alias"] = alias
+            self._repos.append(new_entry)
             self._save()
-            return entry
+            return new_entry
 
     def unregister(self, path_or_alias: str) -> bool:
         """Remove a repository by path or alias.
@@ -193,7 +193,7 @@ class ConnectionPool:
                 try:
                     evict_conn.close()
                 except Exception:
-                    pass
+                    logger.debug("Failed to close evicted connection: %s", evict_key)
                 logger.debug("Evicted connection: %s", evict_key)
 
             conn = sqlite3.connect(key, timeout=30, check_same_thread=False)
@@ -210,7 +210,7 @@ class ConnectionPool:
                 try:
                     conn.close()
                 except Exception:
-                    pass
+                    logger.debug("Failed to close connection: %s", key)
             self._pool.clear()
 
     @property

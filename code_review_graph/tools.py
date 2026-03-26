@@ -718,7 +718,7 @@ def semantic_search_nodes(
         if not results:
             search_mode = "keyword"
 
-        result = {
+        result: dict[str, object] = {
             "status": "ok",
             "query": query,
             "search_mode": search_mode,
@@ -1025,7 +1025,7 @@ def list_flows(
                         filtered.append(f)
             flows = filtered[:limit]
 
-        result = {
+        result: dict[str, object] = {
             "status": "ok",
             "summary": f"Found {len(flows)} execution flow(s)",
             "flows": flows,
@@ -1206,7 +1206,7 @@ def list_communities_func(
     store, root = _get_store(repo_root)
     try:
         communities = get_communities(store, sort_by=sort_by, min_size=min_size)
-        result = {
+        result: dict[str, object] = {
             "status": "ok",
             "summary": f"Found {len(communities)} communities",
             "communities": communities,
